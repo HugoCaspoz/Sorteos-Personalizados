@@ -17,8 +17,7 @@
             background-color: white;
             padding: 20px;
             border-radius: 12px;
-            box-shadow: 0 8px
- 30px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
             text-align: center;
         }
         h1 { color: #333; }
@@ -110,7 +109,7 @@
             <div id="lista-participantes" class="list"></div>
         </div>
         <div class="column">
-            <h2>Premios</h2>
+            <h2>Premios (Habitaciones)</h2>
             <input type="text" id="premio-input" placeholder="Escribe un premio y pulsa Enter">
             <div id="lista-premios" class="list"></div>
         </div>
@@ -122,8 +121,6 @@
 </div>
 
 <script>
-    // --- NUEVA VARIABLE DE ESTADO ---
-    // Esta variable "recuerda" si la regla especial ya se ha usado.
     let reglaEspecialUtilizada = false;
 
     function setupInput(inputId, listId) {
@@ -176,14 +173,12 @@
         let participantesDisponibles = [...participantes];
         let premiosDisponibles = [...premios];
         
-        // --- LÓGICA MODIFICADA PARA LA REGLA DE UN SOLO USO ---
         const nombresEnMinusculas = participantes.map(p => p.toLowerCase());
         const premiosEnMinusculas = premios.map(p => p.toLowerCase());
         const sePuedeAmañar = Object.keys(reglas).every(nombre => nombresEnMinusculas.includes(nombre) && premiosEnMinusculas.includes(reglas[nombre]));
 
         if (sePuedeAmañar && !reglaEspecialUtilizada) {
-            // Si se puede amañar y la regla NO se ha usado, la aplicamos
-            reglaEspecialUtilizada = true; // ¡La marcamos como usada para la próxima vez!
+            reglaEspecialUtilizada = true;
             for (const nombreRegla in reglas) {
                 const premioRegla = reglas[nombreRegla];
                 const nombreIndex = participantesDisponibles.findIndex(p => p.toLowerCase() === nombreRegla);
@@ -198,54 +193,57 @@
             }
         }
         
-        // El resto (o todos si la regla no se aplica o ya se usó) se sortean aleatoriamente
         shuffleArray(premiosDisponibles); 
         participantesDisponibles.forEach((participante, index) => {
             resultadosFinales.push(`<strong>${participante}</strong> &longrightarrow; <strong>${premiosDisponibles[index]}</strong>`);
         });
         
         shuffleArray(resultadosFinales);
-        iniciarAnimacionYMostrarResultados(participantes, premios, resultadosFinales);
+        
+        // --- FUNCIÓN DE VISUALIZACIÓN REESCRITA Y MÁS ROBUSTA ---
+        mostrarSecuenciaDeResultados(participantes, premios, resultadosFinales);
     }
 
-    function iniciarAnimacionYMostrarResultados(nombres, premios, resultados) {
+    const sleep = ms => new Promise(res => setTimeout(res, ms));
+
+    async function mostrarSecuenciaDeResultados(nombres, premios, resultados) {
         const boton = document.getElementById('action-button');
         const resultsContainer = document.getElementById('results-container');
         const shufflingDiv = document.getElementById('shuffling-animation');
+
         boton.disabled = true;
         boton.innerText = 'Sorteando...';
         resultsContainer.innerHTML = '';
         shufflingDiv.style.display = 'block';
-        let shuffleCount = 0;
-        const shuffleInterval = setInterval(() => {
-            const randomNombre = nombres[Math.floor(Math.random() * nombres.length)];
-            const randomPremio = premios[Math.floor(Math.random() * premios.length)];
-            shufflingDiv.innerHTML = `${randomNombre} &harr; ${randomPremio}`;
-            if (++shuffleCount > 25) {
-                clearInterval(shuffleInterval);
-                shufflingDiv.style.display = 'none';
-                mostrarResultados(resultados);
-            }
-        }, 120);
-    }
 
-    function mostrarResultados(resultados) {
-        const resultsContainer = document.getElementById('results-container');
-        resultados.forEach((resultado, index) => {
-            setTimeout(() => {
-                const resultElement = document.createElement('div');
-                resultElement.className = 'result-line';
-                resultElement.innerHTML = resultado;
-                resultsContainer.appendChild(resultElement);
-            }, index * 800);
+        // 1. Esperar a que la animación de "barajado" termine
+        await new Promise(resolve => {
+            let shuffleCount = 0;
+            const shuffleInterval = setInterval(() => {
+                const randomNombre = nombres[Math.floor(Math.random() * nombres.length)];
+                const randomPremio = premios[Math.floor(Math.random() * premios.length)];
+                shufflingDiv.innerHTML = `${randomNombre} &harr; ${randomPremio}`;
+                if (++shuffleCount > 25) {
+                    clearInterval(shuffleInterval);
+                    resolve();
+                }
+            }, 120);
         });
-        
-        // --- CAMBIO PARA REACTIVAR EL BOTÓN ---
-        setTimeout(() => {
-            const boton = document.getElementById('action-button');
-            boton.innerText = '¡REALIZAR OTRO SORTEO!';
-            boton.disabled = false; // Lo volvemos a activar
-        }, resultados.length * 800);
+
+        shufflingDiv.style.display = 'none';
+
+        // 2. Mostrar cada resultado uno por uno, con una pausa
+        for (const resultado of resultados) {
+            const resultElement = document.createElement('div');
+            resultElement.className = 'result-line';
+            resultElement.innerHTML = resultado;
+            resultsContainer.appendChild(resultElement);
+            await sleep(800); // Pausa de 0.8 segundos
+        }
+
+        // 3. Reactivar el botón como paso final garantizado
+        boton.innerText = '¡REALIZAR OTRO SORTEO!';
+        boton.disabled = false;
     }
 </script>
 
