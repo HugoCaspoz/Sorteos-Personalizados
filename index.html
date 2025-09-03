@@ -121,36 +121,7 @@
 </div>
 
 <script>
-    // Variable global para controlar la regla de un solo uso
     let reglaEspecialUtilizada = false;
-
-    function setupInput(inputId, listId) {
-        const input = document.getElementById(inputId);
-        input.addEventListener('keydown', function(event) {
-            if (event.key === 'Enter' && this.value.trim() !== '') {
-                event.preventDefault(); addToList(listId, this.value.trim()); this.value = '';
-            }
-        });
-    }
-
-    function addToList(listId, value) {
-        const list = document.getElementById(listId);
-        const item = document.createElement('div');
-        item.className = 'list-item';
-        const span = document.createElement('span');
-        span.textContent = value;
-        const deleteBtn = document.createElement('span');
-        deleteBtn.className = 'delete-btn';
-        deleteBtn.title = 'Eliminar';
-        deleteBtn.textContent = '(x)';
-        deleteBtn.addEventListener('click', () => item.remove());
-        item.appendChild(span);
-        item.appendChild(deleteBtn);
-        list.appendChild(item);
-    }
-    
-    setupInput('participante-input', 'lista-participantes');
-    setupInput('premio-input', 'lista-premios');
 
     function shuffleArray(array) {
         for (let i = array.length - 1; i > 0; i--) {
@@ -164,47 +135,39 @@
         const premios = Array.from(document.querySelectorAll('#lista-premios .list-item span:first-child')).map(el => el.textContent);
 
         if (participantes.length !== premios.length || participantes.length === 0) {
-            alert('Debe haber el mismo número de participantes y premios, y las listas no pueden estar vacías.'); return;
+            alert('Debe haber el mismo número de participantes y premios, y las listas no pueden estar vacías.');
+            return;
         }
 
         const reglas = { 'carlota': 'grande', 'vero': 'mediana', 'paula': 'pequeña' };
         let resultadosFinales = [];
         let participantesDisponibles = [...participantes];
         let premiosDisponibles = [...premios];
-        
-        // Comprobar si se puede aplicar la regla especial
+
         const nombresEnMinusculas = participantes.map(p => p.toLowerCase());
         const premiosEnMinusculas = premios.map(p => p.toLowerCase());
         const sePuedeAmañar = Object.keys(reglas).every(nombre => nombresEnMinusculas.includes(nombre) && premiosEnMinusculas.includes(reglas[nombre]));
 
-        // Si se puede amañar y la regla AÚN NO se ha usado, la aplicamos
         if (sePuedeAmañar && !reglaEspecialUtilizada) {
-            reglaEspecialUtilizada = true; // Marcamos la regla como usada para futuros sorteos
-            
+            reglaEspecialUtilizada = true;
             for (const nombreRegla in reglas) {
                 const premioRegla = reglas[nombreRegla];
                 const nombreReal = participantes.find(p => p.toLowerCase() === nombreRegla);
                 const premioReal = premios.find(p => p.toLowerCase() === premioRegla);
-
-                if(nombreReal && premioReal) {
+                if (nombreReal && premioReal) {
                     resultadosFinales.push(`<strong>${nombreReal}</strong> &longrightarrow; <strong>${premioReal}</strong>`);
-                    // Eliminamos a los participantes y premios ya asignados de las listas de disponibles
                     participantesDisponibles = participantesDisponibles.filter(p => p.toLowerCase() !== nombreRegla);
                     premiosDisponibles = premiosDisponibles.filter(p => p.toLowerCase() !== premioRegla);
                 }
             }
         }
-        
-        // Sorteamos aleatoriamente el resto de participantes y premios
-        shuffleArray(premiosDisponibles); 
-        
-        participantesDisponibles.forEach((participante, index) => {
-            resultadosFinales.push(`<strong>${participante}</strong> &longrightarrow; <strong>${premiosDisponibles[index]}</strong>`);
+
+        shuffleArray(premiosDisponibles);
+        participantesDisponibles.forEach((p, i) => {
+            resultadosFinales.push(`<strong>${p}</strong> &longrightarrow; <strong>${premiosDisponibles[i]}</strong>`);
         });
-        
-        // Barajamos el orden de visualización de los resultados para que no sea predecible
+
         shuffleArray(resultadosFinales);
-        
         mostrarSecuenciaDeResultados(participantes, premios, resultadosFinales);
     }
 
@@ -220,8 +183,8 @@
         resultsContainer.innerHTML = '';
         shufflingDiv.style.display = 'block';
 
-        // Animación robusta con async/await
-        for (let i = 0; i < 25; i++) {
+        // Animación corta para no colgar
+        for (let i = 0; i < 15; i++) {
             const randomNombre = nombres[Math.floor(Math.random() * nombres.length)];
             const randomPremio = premios[Math.floor(Math.random() * premios.length)];
             shufflingDiv.innerHTML = `${randomNombre} &harr; ${randomPremio}`;
@@ -230,16 +193,15 @@
 
         shufflingDiv.style.display = 'none';
 
-        // Muestra de resultados secuencial
+        // Mostrar resultados más rápido
         for (const resultado of resultados) {
             const resultElement = document.createElement('div');
             resultElement.className = 'result-line';
             resultElement.innerHTML = resultado;
             resultsContainer.appendChild(resultElement);
-            await sleep(800);
+            await sleep(300); // más corto que 800ms
         }
 
-        // Reactivación del botón garantizada
         boton.innerText = '¡REALIZAR OTRO SORTEO!';
         boton.disabled = false;
     }
