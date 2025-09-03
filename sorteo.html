@@ -2,27 +2,30 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sorteo Personalizado</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background-color: #f7f9fc;
-            padding: 20px;
+            padding: 10px;
+            margin: 0;
         }
         #main-container {
             max-width: 800px;
             margin: 20px auto;
             background-color: white;
-            padding: 30px 40px;
+            padding: 20px;
             border-radius: 12px;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 8px
+ 30px rgba(0, 0, 0, 0.1);
             text-align: center;
         }
         h1 { color: #333; }
         #columns-container {
             display: flex;
             justify-content: space-between;
-            gap: 30px;
+            gap: 20px;
             margin-top: 30px;
         }
         .column {
@@ -53,12 +56,14 @@
             margin: 8px 0;
             font-weight: 500;
             animation: pop-in 0.3s ease;
+            word-break: break-word;
         }
         .delete-btn {
             cursor: pointer;
             font-weight: bold;
             color: #904341;
             padding: 0 5px;
+            margin-left: 10px;
         }
         @keyframes pop-in { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
         #action-button {
@@ -72,6 +77,8 @@
             cursor: pointer;
             transition: background-color 0.3s, transform 0.1s;
             margin-top: 30px;
+            width: 100%;
+            max-width: 400px;
         }
         #action-button:disabled { background-color: #a0a0a0; cursor: not-allowed; }
         #results-container {
@@ -80,9 +87,24 @@
         .result-line {
             background-color: #f0fff0; border-left: 5px solid #28a745; padding: 15px; margin-top: 10px;
             text-align: left; opacity: 0; transform: translateY(10px); animation: fadeIn 0.5s forwards;
+            word-break: break-word;
         }
         @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
         #shuffling-animation { font-size: 1.5em; font-weight: bold; color: #555; height: 40px; display: none; }
+
+        /* --- NUEVO CÓDIGO PARA HACERLO RESPONSIVE --- */
+        @media (max-width: 768px) {
+            body {
+                padding: 5px;
+            }
+            #main-container {
+                padding: 15px;
+                margin: 10px auto;
+            }
+            #columns-container {
+                flex-direction: column; /* Cambia la dirección de las columnas a vertical */
+            }
+        }
     </style>
 </head>
 <body>
@@ -96,7 +118,7 @@
             <div id="lista-participantes" class="list"></div>
         </div>
         <div class="column">
-            <h2>Premios</h2>
+            <h2>Premios (Habitaciones)</h2>
             <input type="text" id="premio-input" placeholder="Escribe un premio y pulsa Enter">
             <div id="lista-premios" class="list"></div>
         </div>
@@ -122,11 +144,26 @@
 
     function addToList(listId, value) {
         const list = document.getElementById(listId);
+        // Evitar añadir duplicados a la misma lista
+        const existingItems = Array.from(list.querySelectorAll('span:first-child')).map(el => el.textContent.toLowerCase());
+        if (existingItems.includes(value.toLowerCase())) {
+            alert("Este elemento ya está en la lista.");
+            return;
+        }
+        
         const item = document.createElement('div');
         item.className = 'list-item';
-        item.innerHTML = `<span>${value}</span><span class="delete-btn" title="Eliminar">(x)</span>`;
+        // Sanitizar el valor para evitar inyección de HTML
+        const span = document.createElement('span');
+        span.textContent = value;
+        const deleteBtn = document.createElement('span');
+        deleteBtn.className = 'delete-btn';
+        deleteBtn.title = 'Eliminar';
+        deleteBtn.textContent = '(x)';
         
-        item.querySelector('.delete-btn').addEventListener('click', () => item.remove());
+        deleteBtn.addEventListener('click', () => item.remove());
+        item.appendChild(span);
+        item.appendChild(deleteBtn);
         list.appendChild(item);
     }
     
@@ -163,19 +200,18 @@
                 const premioReal = premiosDisponibles[premioIndex];
                 resultadosFinales.push(`<strong>${nombreReal}</strong> &longrightarrow; <strong>${premioReal}</strong>`);
                 
-                // Los eliminamos de las listas para que no entren en el sorteo aleatorio
                 participantesDisponibles.splice(nombreIndex, 1);
                 premiosDisponibles.splice(premioIndex, 1);
             }
         }
         
         // 2. Sorteamos aleatoriamente el resto
-        premiosDisponibles.sort(() => Math.random() - 0.5); // Barajamos los premios restantes
+        premiosDisponibles.sort(() => Math.random() - 0.5);
         participantesDisponibles.forEach((participante, index) => {
             resultadosFinales.push(`<strong>${participante}</strong> &longrightarrow; <strong>${premiosDisponibles[index]}</strong>`);
         });
 
-        // 3. Barajamos el orden final de los resultados para que no sea predecible
+        // 3. Barajamos el orden final de los resultados
         resultadosFinales.sort(() => Math.random() - 0.5);
         
         // 4. Mostramos la animación y el resultado
