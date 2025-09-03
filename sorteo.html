@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Sorteo Personalizado</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f7f9fc;
+            padding: 20px;
+        }
+        #main-container {
+            max-width: 800px;
+            margin: 20px auto;
+            background-color: white;
+            padding: 30px 40px;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        h1 { color: #333; }
+        #columns-container {
+            display: flex;
+            justify-content: space-between;
+            gap: 30px;
+            margin-top: 30px;
+        }
+        .column {
+            flex: 1;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+        }
+        .column h2 { margin-top: 0; color: #555; }
+        .column input {
+            width: calc(100% - 24px);
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 1em;
+            margin-bottom: 15px;
+        }
+        .list { min-height: 100px; }
+        .list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #e0e7ff;
+            color: #434190;
+            padding: 8px 15px;
+            border-radius: 20px;
+            margin: 8px 0;
+            font-weight: 500;
+            animation: pop-in 0.3s ease;
+        }
+        .delete-btn {
+            cursor: pointer;
+            font-weight: bold;
+            color: #904341;
+            padding: 0 5px;
+        }
+        @keyframes pop-in { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        #action-button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1em;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.1s;
+            margin-top: 30px;
+        }
+        #action-button:disabled { background-color: #a0a0a0; cursor: not-allowed; }
+        #results-container {
+            margin-top: 30px; font-size: 1.25em; color: #333; min-height: 120px;
+        }
+        .result-line {
+            background-color: #f0fff0; border-left: 5px solid #28a745; padding: 15px; margin-top: 10px;
+            text-align: left; opacity: 0; transform: translateY(10px); animation: fadeIn 0.5s forwards;
+        }
+        @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+        #shuffling-animation { font-size: 1.5em; font-weight: bold; color: #555; height: 40px; display: none; }
+    </style>
+</head>
+<body>
+
+<div id="main-container">
+    <h1>Sorteo Personalizado</h1>
+    <div id="columns-container">
+        <div class="column">
+            <h2>Participantes</h2>
+            <input type="text" id="participante-input" placeholder="Escribe un nombre y pulsa Enter">
+            <div id="lista-participantes" class="list"></div>
+        </div>
+        <div class="column">
+            <h2>Premios</h2>
+            <input type="text" id="premio-input" placeholder="Escribe un premio y pulsa Enter">
+            <div id="lista-premios" class="list"></div>
+        </div>
+    </div>
+    <button id="action-button" onclick="realizarSorteo()">¡REALIZAR SORTEO!</button>
+    <div id="results-container">
+        <div id="shuffling-animation"></div>
+    </div>
+</div>
+
+<script>
+    // --- LÓGICA PARA AÑADIR Y QUITAR ELEMENTOS DE LAS LISTAS ---
+    function setupInput(inputId, listId) {
+        const input = document.getElementById(inputId);
+        input.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' && this.value.trim() !== '') {
+                event.preventDefault();
+                addToList(listId, this.value.trim());
+                this.value = '';
+            }
+        });
+    }
+
+    function addToList(listId, value) {
+        const list = document.getElementById(listId);
+        const item = document.createElement('div');
+        item.className = 'list-item';
+        item.innerHTML = `<span>${value}</span><span class="delete-btn" title="Eliminar">(x)</span>`;
+        
+        item.querySelector('.delete-btn').addEventListener('click', () => item.remove());
+        list.appendChild(item);
+    }
+    
+    setupInput('participante-input', 'lista-participantes');
+    setupInput('premio-input', 'lista-premios');
+
+    // --- LÓGICA PRINCIPAL DEL SORTEO ---
+    function realizarSorteo() {
+        const participantes = Array.from(document.querySelectorAll('#lista-participantes .list-item span:first-child')).map(el => el.textContent);
+        const premios = Array.from(document.querySelectorAll('#lista-premios .list-item span:first-child')).map(el => el.textContent);
+
+        if (participantes.length === 0 || premios.length === 0) {
+            alert('Añade al menos un participante y un premio.');
+            return;
+        }
+        if (participantes.length !== premios.length) {
+            alert('El número de participantes y premios debe ser el mismo.');
+            return;
+        }
+
+        const reglas = { 'carlota': 'grande', 'vero': 'mediana', 'paula': 'pequeña' };
+        let resultadosFinales = [];
+        let participantesDisponibles = [...participantes];
+        let premiosDisponibles = [...premios];
+        
+        // 1. Aplicamos las reglas del "amaño" primero
+        for (const nombreRegla in reglas) {
+            const premioRegla = reglas[nombreRegla];
+            const nombreIndex = participantesDisponibles.findIndex(p => p.toLowerCase() === nombreRegla);
+            const premioIndex = premiosDisponibles.findIndex(p => p.toLowerCase() === premioRegla);
+            
+            if (nombreIndex > -1 && premioIndex > -1) {
+                const nombreReal = participantesDisponibles[nombreIndex];
+                const premioReal = premiosDisponibles[premioIndex];
+                resultadosFinales.push(`<strong>${nombreReal}</strong> &longrightarrow; <strong>${premioReal}</strong>`);
+                
+                // Los eliminamos de las listas para que no entren en el sorteo aleatorio
+                participantesDisponibles.splice(nombreIndex, 1);
+                premiosDisponibles.splice(premioIndex, 1);
+            }
+        }
+        
+        // 2. Sorteamos aleatoriamente el resto
+        premiosDisponibles.sort(() => Math.random() - 0.5); // Barajamos los premios restantes
+        participantesDisponibles.forEach((participante, index) => {
+            resultadosFinales.push(`<strong>${participante}</strong> &longrightarrow; <strong>${premiosDisponibles[index]}</strong>`);
+        });
+
+        // 3. Barajamos el orden final de los resultados para que no sea predecible
+        resultadosFinales.sort(() => Math.random() - 0.5);
+        
+        // 4. Mostramos la animación y el resultado
+        iniciarAnimacionYMostrarResultados(participantes, premios, resultadosFinales);
+    }
+
+    function iniciarAnimacionYMostrarResultados(nombres, premios, resultados) {
+        const boton = document.getElementById('action-button');
+        const resultsContainer = document.getElementById('results-container');
+        const shufflingDiv = document.getElementById('shuffling-animation');
+        
+        boton.disabled = true;
+        boton.innerText = 'Sorteando...';
+        resultsContainer.innerHTML = '';
+        shufflingDiv.style.display = 'block';
+
+        let shuffleCount = 0;
+        const shuffleInterval = setInterval(() => {
+            const randomNombre = nombres[Math.floor(Math.random() * nombres.length)];
+            const randomPremio = premios[Math.floor(Math.random() * premios.length)];
+            shufflingDiv.innerHTML = `${randomNombre} &harr; ${randomPremio}`;
+            
+            if (++shuffleCount > 25) { // 3 segundos de animación
+                clearInterval(shuffleInterval);
+                shufflingDiv.style.display = 'none';
+                mostrarResultados(resultados);
+            }
+        }, 120);
+    }
+
+    function mostrarResultados(resultados) {
+        const resultsContainer = document.getElementById('results-container');
+        resultados.forEach((resultado, index) => {
+            setTimeout(() => {
+                const resultElement = document.createElement('div');
+                resultElement.className = 'result-line';
+                resultElement.innerHTML = resultado;
+                resultsContainer.appendChild(resultElement);
+            }, index * 800);
+        });
+        
+        setTimeout(() => {
+            document.getElementById('action-button').innerText = 'Sorteo Finalizado';
+        }, resultados.length * 800);
+    }
+</script>
+
+</body>
+</html>
