@@ -92,18 +92,10 @@
         @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
         #shuffling-animation { font-size: 1.5em; font-weight: bold; color: #555; height: 40px; display: none; }
 
-        /* --- NUEVO CÓDIGO PARA HACERLO RESPONSIVE --- */
         @media (max-width: 768px) {
-            body {
-                padding: 5px;
-            }
-            #main-container {
-                padding: 15px;
-                margin: 10px auto;
-            }
-            #columns-container {
-                flex-direction: column; /* Cambia la dirección de las columnas a vertical */
-            }
+            body { padding: 5px; }
+            #main-container { padding: 15px; margin: 10px auto; }
+            #columns-container { flex-direction: column; }
         }
     </style>
 </head>
@@ -118,7 +110,7 @@
             <div id="lista-participantes" class="list"></div>
         </div>
         <div class="column">
-            <h2>Premios</h2>
+            <h2>Premios (Habitaciones)</h2>
             <input type="text" id="premio-input" placeholder="Escribe un premio y pulsa Enter">
             <div id="lista-premios" class="list"></div>
         </div>
@@ -130,7 +122,6 @@
 </div>
 
 <script>
-    // --- LÓGICA PARA AÑADIR Y QUITAR ELEMENTOS DE LAS LISTAS ---
     function setupInput(inputId, listId) {
         const input = document.getElementById(inputId);
         input.addEventListener('keydown', function(event) {
@@ -144,23 +135,19 @@
 
     function addToList(listId, value) {
         const list = document.getElementById(listId);
-        // Evitar añadir duplicados a la misma lista
         const existingItems = Array.from(list.querySelectorAll('span:first-child')).map(el => el.textContent.toLowerCase());
         if (existingItems.includes(value.toLowerCase())) {
             alert("Este elemento ya está en la lista.");
             return;
         }
-        
         const item = document.createElement('div');
         item.className = 'list-item';
-        // Sanitizar el valor para evitar inyección de HTML
         const span = document.createElement('span');
         span.textContent = value;
         const deleteBtn = document.createElement('span');
         deleteBtn.className = 'delete-btn';
         deleteBtn.title = 'Eliminar';
         deleteBtn.textContent = '(x)';
-        
         deleteBtn.addEventListener('click', () => item.remove());
         item.appendChild(span);
         item.appendChild(deleteBtn);
@@ -170,17 +157,20 @@
     setupInput('participante-input', 'lista-participantes');
     setupInput('premio-input', 'lista-premios');
 
-    // --- LÓGICA PRINCIPAL DEL SORTEO ---
+    // --- NUEVA FUNCIÓN PARA BARAJADO ALEATORIO ---
+    function shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]]; // Intercambia elementos
+        }
+    }
+
     function realizarSorteo() {
         const participantes = Array.from(document.querySelectorAll('#lista-participantes .list-item span:first-child')).map(el => el.textContent);
         const premios = Array.from(document.querySelectorAll('#lista-premios .list-item span:first-child')).map(el => el.textContent);
 
-        if (participantes.length === 0 || premios.length === 0) {
-            alert('Añade al menos un participante y un premio.');
-            return;
-        }
-        if (participantes.length !== premios.length) {
-            alert('El número de participantes y premios debe ser el mismo.');
+        if (participantes.length !== premios.length || participantes.length === 0) {
+            alert('Debe haber el mismo número de participantes y premios, y las listas no pueden estar vacías.');
             return;
         }
 
@@ -189,7 +179,6 @@
         let participantesDisponibles = [...participantes];
         let premiosDisponibles = [...premios];
         
-        // 1. Aplicamos las reglas del "amaño" primero
         for (const nombreRegla in reglas) {
             const premioRegla = reglas[nombreRegla];
             const nombreIndex = participantesDisponibles.findIndex(p => p.toLowerCase() === nombreRegla);
@@ -199,22 +188,21 @@
                 const nombreReal = participantesDisponibles[nombreIndex];
                 const premioReal = premiosDisponibles[premioIndex];
                 resultadosFinales.push(`<strong>${nombreReal}</strong> &longrightarrow; <strong>${premioReal}</strong>`);
-                
                 participantesDisponibles.splice(nombreIndex, 1);
                 premiosDisponibles.splice(premioIndex, 1);
             }
         }
         
-        // 2. Sorteamos aleatoriamente el resto
-        premiosDisponibles.sort(() => Math.random() - 0.5);
+        // --- CAMBIO IMPORTANTE: USAMOS LA NUEVA FUNCIÓN ---
+        // Barajamos los premios restantes de forma fiable
+        shuffleArray(premiosDisponibles); 
+        
         participantesDisponibles.forEach((participante, index) => {
             resultadosFinales.push(`<strong>${participante}</strong> &longrightarrow; <strong>${premiosDisponibles[index]}</strong>`);
         });
-
-        // 3. Barajamos el orden final de los resultados
-        resultadosFinales.sort(() => Math.random() - 0.5);
         
-        // 4. Mostramos la animación y el resultado
+        shuffleArray(resultadosFinales); // Barajamos el orden de visualización final
+        
         iniciarAnimacionYMostrarResultados(participantes, premios, resultadosFinales);
     }
 
@@ -222,19 +210,16 @@
         const boton = document.getElementById('action-button');
         const resultsContainer = document.getElementById('results-container');
         const shufflingDiv = document.getElementById('shuffling-animation');
-        
         boton.disabled = true;
         boton.innerText = 'Sorteando...';
         resultsContainer.innerHTML = '';
         shufflingDiv.style.display = 'block';
-
         let shuffleCount = 0;
         const shuffleInterval = setInterval(() => {
             const randomNombre = nombres[Math.floor(Math.random() * nombres.length)];
             const randomPremio = premios[Math.floor(Math.random() * premios.length)];
             shufflingDiv.innerHTML = `${randomNombre} &harr; ${randomPremio}`;
-            
-            if (++shuffleCount > 25) { // 3 segundos de animación
+            if (++shuffleCount > 25) {
                 clearInterval(shuffleInterval);
                 shufflingDiv.style.display = 'none';
                 mostrarResultados(resultados);
