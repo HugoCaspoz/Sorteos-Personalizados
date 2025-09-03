@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sorteo Personalizado</title>
+    <title>Sorteo Personalizado (Prueba)</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -101,7 +101,7 @@
 <body>
 
 <div id="main-container">
-    <h1>Sorteo Personalizado</h1>
+    <h1>Sorteo Personalizado (Prueba)</h1>
     <div id="columns-container">
         <div class="column">
             <h2>Participantes</h2>
@@ -109,7 +109,7 @@
             <div id="lista-participantes" class="list"></div>
         </div>
         <div class="column">
-            <h2>Premios (Habitaciones)</h2>
+            <h2>Premios</h2>
             <input type="text" id="premio-input" placeholder="Escribe un premio y pulsa Enter">
             <div id="lista-premios" class="list"></div>
         </div>
@@ -121,8 +121,6 @@
 </div>
 
 <script>
-    let reglaEspecialUtilizada = false;
-
     function setupInput(inputId, listId) {
         const input = document.getElementById(inputId);
         input.addEventListener('keydown', function(event) {
@@ -134,8 +132,6 @@
 
     function addToList(listId, value) {
         const list = document.getElementById(listId);
-        const existingItems = Array.from(list.querySelectorAll('span:first-child')).map(el => el.textContent.toLowerCase());
-        if (existingItems.includes(value.toLowerCase())) { alert("Este elemento ya está en la lista."); return; }
         const item = document.createElement('div');
         item.className = 'list-item';
         const span = document.createElement('span');
@@ -168,39 +164,19 @@
             alert('Debe haber el mismo número de participantes y premios, y las listas no pueden estar vacías.'); return;
         }
 
-        const reglas = { 'carlota': 'grande', 'vero': 'mediana', 'paula': 'pequeña' };
-        let resultadosFinales = [];
+        // Lógica simplificada: siempre aleatorio
         let participantesDisponibles = [...participantes];
         let premiosDisponibles = [...premios];
-        
-        const nombresEnMinusculas = participantes.map(p => p.toLowerCase());
-        const premiosEnMinusculas = premios.map(p => p.toLowerCase());
-        const sePuedeAmañar = Object.keys(reglas).every(nombre => nombresEnMinusculas.includes(nombre) && premiosEnMinusculas.includes(reglas[nombre]));
+        let resultadosFinales = [];
 
-        if (sePuedeAmañar && !reglaEspecialUtilizada) {
-            reglaEspecialUtilizada = true;
-            for (const nombreRegla in reglas) {
-                const premioRegla = reglas[nombreRegla];
-                const nombreIndex = participantesDisponibles.findIndex(p => p.toLowerCase() === nombreRegla);
-                const premioIndex = premiosDisponibles.findIndex(p => p.toLowerCase() === premioRegla);
-                if (nombreIndex > -1 && premioIndex > -1) {
-                    const nombreReal = participantesDisponibles[nombreIndex];
-                    const premioReal = premiosDisponibles[premioIndex];
-                    resultadosFinales.push(`<strong>${nombreReal}</strong> &longrightarrow; <strong>${premioReal}</strong>`);
-                    participantesDisponibles.splice(nombreIndex, 1);
-                    premiosDisponibles.splice(premioIndex, 1);
-                }
-            }
-        }
-        
         shuffleArray(premiosDisponibles); 
+        
         participantesDisponibles.forEach((participante, index) => {
             resultadosFinales.push(`<strong>${participante}</strong> &longrightarrow; <strong>${premiosDisponibles[index]}</strong>`);
         });
         
         shuffleArray(resultadosFinales);
         
-        // --- FUNCIÓN DE VISUALIZACIÓN REESCRITA Y MÁS ROBUSTA ---
         mostrarSecuenciaDeResultados(participantes, premios, resultadosFinales);
     }
 
@@ -216,7 +192,6 @@
         resultsContainer.innerHTML = '';
         shufflingDiv.style.display = 'block';
 
-        // 1. Esperar a que la animación de "barajado" termine
         await new Promise(resolve => {
             let shuffleCount = 0;
             const shuffleInterval = setInterval(() => {
@@ -232,16 +207,14 @@
 
         shufflingDiv.style.display = 'none';
 
-        // 2. Mostrar cada resultado uno por uno, con una pausa
         for (const resultado of resultados) {
             const resultElement = document.createElement('div');
             resultElement.className = 'result-line';
             resultElement.innerHTML = resultado;
             resultsContainer.appendChild(resultElement);
-            await sleep(800); // Pausa de 0.8 segundos
+            await sleep(800);
         }
 
-        // 3. Reactivar el botón como paso final garantizado
         boton.innerText = '¡REALIZAR OTRO SORTEO!';
         boton.disabled = false;
     }
