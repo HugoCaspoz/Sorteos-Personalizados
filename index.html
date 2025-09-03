@@ -121,7 +121,38 @@
 </div>
 
 <script>
+    // Variable global para controlar la regla de un solo uso
     let reglaEspecialUtilizada = false;
+
+    function setupInput(inputId, listId) {
+        const input = document.getElementById(inputId);
+        input.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' && this.value.trim() !== '') {
+                event.preventDefault();
+                addToList(listId, this.value.trim());
+                this.value = '';
+            }
+        });
+    }
+
+    function addToList(listId, value) {
+        const list = document.getElementById(listId);
+        const item = document.createElement('div');
+        item.className = 'list-item';
+        const span = document.createElement('span');
+        span.textContent = value;
+        const deleteBtn = document.createElement('span');
+        deleteBtn.className = 'delete-btn';
+        deleteBtn.title = 'Eliminar';
+        deleteBtn.textContent = '(x)';
+        deleteBtn.addEventListener('click', () => item.remove());
+        item.appendChild(span);
+        item.appendChild(deleteBtn);
+        list.appendChild(item);
+    }
+    
+    setupInput('participante-input', 'lista-participantes');
+    setupInput('premio-input', 'lista-premios');
 
     function shuffleArray(array) {
         for (let i = array.length - 1; i > 0; i--) {
@@ -143,7 +174,7 @@
         let resultadosFinales = [];
         let participantesDisponibles = [...participantes];
         let premiosDisponibles = [...premios];
-
+        
         const nombresEnMinusculas = participantes.map(p => p.toLowerCase());
         const premiosEnMinusculas = premios.map(p => p.toLowerCase());
         const sePuedeAmañar = Object.keys(reglas).every(nombre => nombresEnMinusculas.includes(nombre) && premiosEnMinusculas.includes(reglas[nombre]));
@@ -154,20 +185,21 @@
                 const premioRegla = reglas[nombreRegla];
                 const nombreReal = participantes.find(p => p.toLowerCase() === nombreRegla);
                 const premioReal = premios.find(p => p.toLowerCase() === premioRegla);
-                if (nombreReal && premioReal) {
+                if(nombreReal && premioReal) {
                     resultadosFinales.push(`<strong>${nombreReal}</strong> &longrightarrow; <strong>${premioReal}</strong>`);
                     participantesDisponibles = participantesDisponibles.filter(p => p.toLowerCase() !== nombreRegla);
                     premiosDisponibles = premiosDisponibles.filter(p => p.toLowerCase() !== premioRegla);
                 }
             }
         }
-
-        shuffleArray(premiosDisponibles);
-        participantesDisponibles.forEach((p, i) => {
-            resultadosFinales.push(`<strong>${p}</strong> &longrightarrow; <strong>${premiosDisponibles[i]}</strong>`);
+        
+        shuffleArray(premiosDisponibles); 
+        participantesDisponibles.forEach((participante, index) => {
+            resultadosFinales.push(`<strong>${participante}</strong> &longrightarrow; <strong>${premiosDisponibles[index]}</strong>`);
         });
-
+        
         shuffleArray(resultadosFinales);
+        
         mostrarSecuenciaDeResultados(participantes, premios, resultadosFinales);
     }
 
@@ -180,10 +212,13 @@
 
         boton.disabled = true;
         boton.innerText = 'Sorteando...';
-        resultsContainer.innerHTML = '';
+
+        // limpiar solo resultados previos, no el div de animación
+        resultsContainer.querySelectorAll('.result-line').forEach(el => el.remove());
+
         shufflingDiv.style.display = 'block';
 
-        // Animación corta para no colgar
+        // Animación más corta
         for (let i = 0; i < 15; i++) {
             const randomNombre = nombres[Math.floor(Math.random() * nombres.length)];
             const randomPremio = premios[Math.floor(Math.random() * premios.length)];
@@ -193,19 +228,19 @@
 
         shufflingDiv.style.display = 'none';
 
-        // Mostrar resultados más rápido
         for (const resultado of resultados) {
             const resultElement = document.createElement('div');
             resultElement.className = 'result-line';
             resultElement.innerHTML = resultado;
             resultsContainer.appendChild(resultElement);
-            await sleep(300); // más corto que 800ms
+            await sleep(300);
         }
 
         boton.innerText = '¡REALIZAR OTRO SORTEO!';
         boton.disabled = false;
     }
 </script>
+
 
 </body>
 </html>
