@@ -1,92 +1,249 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sorteo</title>
+    <title>Sorteo Personalizado - Versión Final</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f7f9fc;
+            padding: 10px;
+            margin: 0;
+        }
+        #main-container {
+            max-width: 800px;
+            margin: 20px auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        h1 { color: #333; }
+        #columns-container {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            margin-top: 30px;
+        }
+        .column {
+            flex: 1;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+        }
+        .column h2 { margin-top: 0; color: #555; }
+        .column input {
+            width: calc(100% - 24px);
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 1em;
+            margin-bottom: 15px;
+        }
+        .list { min-height: 100px; }
+        .list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #e0e7ff;
+            color: #434190;
+            padding: 8px 15px;
+            border-radius: 20px;
+            margin: 8px 0;
+            font-weight: 500;
+            animation: pop-in 0.3s ease;
+            word-break: break-word;
+        }
+        .delete-btn {
+            cursor: pointer;
+            font-weight: bold;
+            color: #904341;
+            padding: 0 5px;
+            margin-left: 10px;
+        }
+        @keyframes pop-in { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        #action-button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1em;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.1s;
+            margin-top: 30px;
+            width: 100%;
+            max-width: 400px;
+        }
+        #action-button:disabled { background-color: #a0a0a0; cursor: not-allowed; }
+        #results-container {
+            margin-top: 30px; font-size: 1.25em; color: #333; min-height: 120px;
+        }
+        .result-line {
+            background-color: #f0fff0; border-left: 5px solid #28a745; padding: 15px; margin-top: 10px;
+            text-align: left; opacity: 0; transform: translateY(10px); animation: fadeIn 0.5s forwards;
+            word-break: break-word;
+        }
+        @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+        #shuffling-animation { font-size: 1.5em; font-weight: bold; color: #555; height: 40px; display: none; }
+
+        @media (max-width: 768px) {
+            body { padding: 5px; }
+            #main-container { padding: 15px; margin: 10px auto; }
+            #columns-container { flex-direction: column; }
+        }
+    </style>
 </head>
 <body>
-    <div id="names"></div>
-    <input type="text" id="name">
-    <button id="add">Agregar Nombre</button>
-    <button id="sortear">Realizar Sorteo</button>
-    <h1 id="ganador"></h1>
 
-    <script>
-        const nameInput = document.getElementById("name");
-        const addButton = document.getElementById("add");
-        const sortearButton = document.getElementById("sortear");
-        const namesContainer = document.getElementById("names");
-        const winnerDisplay = document.getElementById("ganador");
+<div id="main-container">
+    <h1>Sorteo Personalizado</h1>
+    <div id="columns-container">
+        <div class="column">
+            <h2>Participantes</h2>
+            <input type="text" id="participante-input" placeholder="Escribe un nombre y pulsa Enter">
+            <div id="lista-participantes" class="list"></div>
+        </div>
+        <div class="column">
+            <h2>Premios</h2>
+            <input type="text" id="premio-input" placeholder="Escribe un premio y pulsa Enter">
+            <div id="lista-premios" class="list"></div>
+        </div>
+    </div>
+    <button id="action-button" onclick="realizarSorteo()">¡REALIZAR SORTEO!</button>
+    <div id="results-container">
+        <div id="shuffling-animation"></div>
+    </div>
+</div>
 
-        const names = [];
+<script>
+    // Variable global para controlar la regla de un solo uso
+    let reglaEspecialUtilizada = false;
 
-        // Función para agregar nombres a la lista
-        addButton.addEventListener("click", () => {
-            const newName = nameInput.value;
-            if (newName.trim() === "") return; // Evita agregar nombres vacíos
-
-            // Añadir al array
-            names.push(newName);
-
-            // Añadir a la vista HTML
-            const nameElement = document.createElement("div");
-            nameElement.textContent = newName;
-            namesContainer.appendChild(nameElement);
-
-            // Limpiar el input
-            nameInput.value = "";
-        });
-
-        // Función para realizar el sorteo
-        sortearButton.addEventListener("click", () => {
-            if (names.length === 0) {
-                winnerDisplay.innerHTML = "No hay participantes";
-                return;
+    function setupInput(inputId, listId) {
+        const input = document.getElementById(inputId);
+        input.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' && this.value.trim() !== '') {
+                event.preventDefault(); addToList(listId, this.value.trim()); this.value = '';
             }
-
-            // Deshabilitar botones durante el sorteo para evitar problemas
-            sortearButton.disabled = true;
-            addButton.disabled = true;
-
-            let aleatorio;
-
-            // Animación del sorteo
-            const intervalo = setInterval(() => {
-                aleatorio = names[Math.floor(Math.random() * names.length)];
-                winnerDisplay.innerHTML = aleatorio;
-            }, 100); // Cambia de nombre cada 100ms
-
-            // Anunciar al ganador después de 2 segundos
-            setTimeout(() => {
-                clearInterval(intervalo);
-                winnerDisplay.innerHTML = "El ganador es: " + aleatorio;
-
-                // --- CORRECCIÓN ---
-                // 1. Encontrar el índice (la posición) del nombre ganador en el array
-                const winnerIndex = names.indexOf(aleatorio);
-
-                // 2. Si se encontró (indexOf no devuelve -1), eliminarlo del array
-                if (winnerIndex > -1) {
-                    names.splice(winnerIndex, 1);
-                }
-
-                // 3. Volver a dibujar la lista de nombres en la pantalla para que refleje el cambio
-                namesContainer.innerHTML = ""; // Limpiamos la lista visual
-                names.forEach(name => {
-                    const nameElement = document.createElement("div");
-                    nameElement.textContent = name;
-                    namesContainer.appendChild(nameElement);
-                });
-                // --- FIN DE LA CORRECCIÓN ---
-
-                // Volver a habilitar los botones
-                sortearButton.disabled = false;
-                addButton.disabled = false;
-
-            }, 2000); // El sorteo dura 2 segundos
         });
-    </script>
+    }
+
+    function addToList(listId, value) {
+        const list = document.getElementById(listId);
+        const item = document.createElement('div');
+        item.className = 'list-item';
+        const span = document.createElement('span');
+        span.textContent = value;
+        const deleteBtn = document.createElement('span');
+        deleteBtn.className = 'delete-btn';
+        deleteBtn.title = 'Eliminar';
+        deleteBtn.textContent = '(x)';
+        deleteBtn.addEventListener('click', () => item.remove());
+        item.appendChild(span);
+        item.appendChild(deleteBtn);
+        list.appendChild(item);
+    }
+    
+    setupInput('participante-input', 'lista-participantes');
+    setupInput('premio-input', 'lista-premios');
+
+    function shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+    }
+
+    function realizarSorteo() {
+        const participantes = Array.from(document.querySelectorAll('#lista-participantes .list-item span:first-child')).map(el => el.textContent);
+        const premios = Array.from(document.querySelectorAll('#lista-premios .list-item span:first-child')).map(el => el.textContent);
+
+        if (participantes.length !== premios.length || participantes.length === 0) {
+            alert('Debe haber el mismo número de participantes y premios, y las listas no pueden estar vacías.'); return;
+        }
+
+        const reglas = { 'carlota': 'grande', 'vero': 'mediana', 'paula': 'pequeña' };
+        let resultadosFinales = [];
+        let participantesDisponibles = [...participantes];
+        let premiosDisponibles = [...premios];
+        
+        // Comprobar si se puede aplicar la regla especial
+        const nombresEnMinusculas = participantes.map(p => p.toLowerCase());
+        const premiosEnMinusculas = premios.map(p => p.toLowerCase());
+        const sePuedeAmañar = Object.keys(reglas).every(nombre => nombresEnMinusculas.includes(nombre) && premiosEnMinusculas.includes(reglas[nombre]));
+
+        // Si se puede amañar y la regla AÚN NO se ha usado, la aplicamos
+        if (sePuedeAmañar && !reglaEspecialUtilizada) {
+            reglaEspecialUtilizada = true; // Marcamos la regla como usada para futuros sorteos
+            
+            for (const nombreRegla in reglas) {
+                const premioRegla = reglas[nombreRegla];
+                const nombreReal = participantes.find(p => p.toLowerCase() === nombreRegla);
+                const premioReal = premios.find(p => p.toLowerCase() === premioRegla);
+
+                if(nombreReal && premioReal) {
+                    resultadosFinales.push(`<strong>${nombreReal}</strong> &longrightarrow; <strong>${premioReal}</strong>`);
+                    // Eliminamos a los participantes y premios ya asignados de las listas de disponibles
+                    participantesDisponibles = participantesDisponibles.filter(p => p.toLowerCase() !== nombreRegla);
+                    premiosDisponibles = premiosDisponibles.filter(p => p.toLowerCase() !== premioRegla);
+                }
+            }
+        }
+        
+        // Sorteamos aleatoriamente el resto de participantes y premios
+        shuffleArray(premiosDisponibles); 
+        
+        participantesDisponibles.forEach((participante, index) => {
+            resultadosFinales.push(`<strong>${participante}</strong> &longrightarrow; <strong>${premiosDisponibles[index]}</strong>`);
+        });
+        
+        // Barajamos el orden de visualización de los resultados para que no sea predecible
+        shuffleArray(resultadosFinales);
+        
+        mostrarSecuenciaDeResultados(participantes, premios, resultadosFinales);
+    }
+
+    const sleep = ms => new Promise(res => setTimeout(res, ms));
+
+    async function mostrarSecuenciaDeResultados(nombres, premios, resultados) {
+        const boton = document.getElementById('action-button');
+        const resultsContainer = document.getElementById('results-container');
+        const shufflingDiv = document.getElementById('shuffling-animation');
+
+        boton.disabled = true;
+        boton.innerText = 'Sorteando...';
+        resultsContainer.innerHTML = '';
+        shufflingDiv.style.display = 'block';
+
+        // Animación robusta con async/await
+        for (let i = 0; i < 25; i++) {
+            const randomNombre = nombres[Math.floor(Math.random() * nombres.length)];
+            const randomPremio = premios[Math.floor(Math.random() * premios.length)];
+            shufflingDiv.innerHTML = `${randomNombre} &harr; ${randomPremio}`;
+            await sleep(100);
+        }
+
+        shufflingDiv.style.display = 'none';
+
+        // Muestra de resultados secuencial
+        for (const resultado of resultados) {
+            const resultElement = document.createElement('div');
+            resultElement.className = 'result-line';
+            resultElement.innerHTML = resultado;
+            resultsContainer.appendChild(resultElement);
+            await sleep(800);
+        }
+
+        // Reactivación del botón garantizada
+        boton.innerText = '¡REALIZAR OTRO SORTEO!';
+        boton.disabled = false;
+    }
+</script>
+
 </body>
 </html>
